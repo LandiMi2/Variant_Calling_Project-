@@ -1,2 +1,2 @@
-# Variant_Calling_Project-
+# Variant_Calling_Project
 Creating a variant calling pipeline 
