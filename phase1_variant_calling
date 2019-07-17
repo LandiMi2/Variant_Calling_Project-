@@ -1,0 +1,121 @@
+conda create -n variant_calling
+conda activate variant_calling
+
+
+#check for quality and presence of adapters
+fastqc WES_chr1_50X_E0.005_merged_read1.fq.gz 
+fastqc WES_chr1_50X_E0.005_merged_read2.fq.gz
+
+#quality trimming via trimmomatic
+
+trimmomatic PE -phred33 WES_chr1_50X_E0.005_merged_read1.fq.gz WES_chr1_50X_E0.005_merged_read2.fq.gz output_forward_paired.fq.gz output_foward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:Truseq3.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+
+#analyse output files with fastqc results for the different outputs stored in a directory as specified 
+#!/bin/bash
+for a in output*
+  do 
+    fastqc ${a}  -o fastqc_output 
+  done
+#concatenate the different outputs via multiqcv for quality checks.
+cd multiqc_data/
+
+#indexing of reference genome chromosome 1 via bowtie2
+
+bowtie2-build chr1_ref.fasta indexed/bt2
+
+#attempting to align the foward paired read with bowtie2 using the indexed reference genome
+
+bowtie2 -x chr1_ref -U output_forward_paired.fq.gz -S fpaired.sam
+
+#(sample output:2314558 reads; of these:
+  2314558 (100.00%) were unpaired; of these:
+    3522 (0.15%) aligned 0 times
+    2028508 (87.64%) aligned exactly 1 time
+    282528 (12.21%) aligned >1 times
+99.85% overall alignment rate
+
+# aligning for reverse paired
+
+bowtie2 -x chr1_ref -U output_forward_paired.fq.gz -S reverse_paired.sam
+
+2314558 reads; of these:
+  2314558 (100.00%) were unpaired; of these:
+    3522 (0.15%) aligned 0 times
+    2028508 (87.64%) aligned exactly 1 time
+    282528 (12.21%) aligned >1 times
+99.85% overall alignment rate
+
+#PE BOWTIE_ALIGNMENT
+bowtie2 -x chr1_ref -1 output_forward_paired.fq.gz -2 output_reverse_paired.fq.gz -S seq12_bowtie.sam
+
+OUTPUT:
+2314558 reads; of these:
+  2314558 (100.00%) were paired; of these:
+    3543 (0.15%) aligned concordantly 0 times
+    2123988 (91.77%) aligned concordantly exactly 1 time
+    187027 (8.08%) aligned concordantly >1 times
+    ----
+    3543 pairs aligned concordantly 0 times; of these:
+      10 (0.28%) aligned discordantly 1 time
+    ----
+    3533 pairs aligned 0 times concordantly or discordantly; of these:
+      7066 mates make up the pairs; of these:
+        6544 (92.61%) aligned 0 times
+        208 (2.94%) aligned exactly 1 time
+        314 (4.44%) aligned >1 times
+99.86% overall alignment rate
+
+#PE BWA_ALIGNMENT & PROCESSING(INDEXING)
+bwa index -p chr1_ref chr1_ref.fasta
+bwa aln chr1_ref output_forward_paired.fq.gz > seq1.sai
+bwa aln chr1_ref output_reverse_paired.fq.gz > seq2.sai
+
+bwa sampe chr1_ref seq1.sai seq2.sai output_forward_paired.fq.gz output_reverse_paired.fq.gz > seq12_pe.sam
+
+#SAM TO BAM
+samtools view -Sb seq12_bowtie.sam > seq12_bowtie.bam
+samtools view -Sb seq12_bwa.sam > seq12_bwa.bam
+
+#marking duplicates
+sambamba markdup -r seq12_bowtie.bam seqcleaned.bam
+sambamba markdup -r seq12_bwa.bam seqcleaned_bwa.bam
+
+#sort bam file
+samtools sort seqcleaned.bam > seqcleaned_sorted.bam
+samtools sort seqcleaned_bwa.bam > seqcleaned_bwa.sorted.bam
+
+#index bam file 
+samtools index seqcleaned_sorted.bam 
+samtools index seqcleaned_sorted.bam
+
+#GENERATING VCF FILE USING BOTH SAM TOOLS AN BCFTOOLS 
+
+#indexed the reference files for GATK Analysis
+samtools faidx chr1_ref.fasta # generates fai indexed files
+#bcftools for generating the bcf files
+bcftools mpileup -f /home/ckmwangi/Archive/VC_TRAIN/refseq/chr1_ref.fasta seqcleaned_sorted.bam | bcftools call -mv -Ob -o calls.bcf
+#bcftools for generating the vcf files 
+bcftools view calls.bcf | vcfutils.pl varFilter -> final.vcf
+
+#GENERATING VCF FILE USING GATK 
+#navigate to GATK
+/home/ckmwangi/Downloads/gatk-4.1.2.0/gatk-4.1.2.0
+#Editing the files used for analysis in GATK 
+./gatk CreateSequenceDictionary --REFERENCE /home/ckmwangi/Archive/VC_TRAIN/refseq/chr1_ref.fasta  # generates the dict files for indexing 
+
+ 
+#Adding Read Groups for the bam files generated
+./gatk AddOrReplaceReadGroups --INPUT /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/seqcleaned_bowtie.bam  --OUTPUT /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/seqcleaned_bowtie_groups.bam --RGID 4 --RGLB lib1 --RGPL illumina --RGPU unit1 --RGSM 20 # GENERATES READ GROUPS FOR THE BAM FILES USED 
+
+#Editing the Golden standard vcf files to fit the reference genome (CHR number one)
+awk '{gsub("1","NC_000001.11",$1); print}' OFS='\t' WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf > Goldenfile.vcf #Use awk command to edit the the chromosome number of the golden vcf files 
+
+#Indexing the golden standard vcf files 
+./gatk IndexFeatureFile  --feature-file /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/Goldenfile.vcf # indexing the golden starndard vcffiles 
+
+# BaseRecalibration step using BSQR protocol
+./gatk BaseRecalibrator  --input /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/seqcleaned_bowtie_groups.bam --known-sites /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/Goldenfile.vcf --output /home/ckmwangi/Archive/VC_TRAIN/refseq/indexes_bowtie2/variant_bowtie.Recalibration --reference /home/ckmwangi/Archive/VC_TRAIN/refseq/chr1_ref.fasta #uses the baserecalibration to recalibrate the files 
+
+
+
+
