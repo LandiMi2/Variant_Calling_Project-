@@ -28,7 +28,7 @@ snakemake -j 4
 Before starting analysis organize your folders as follows:
 
 ## Data
-This folder contains three folders:
+This folder contains three sub-folders:
 1. **reads** - contains your raw reads files.
      * `WES_chr1_50X_E0.005_merged_read1.fq.gz`
      * `WES_chr1_50X_E0.005_merged_read2.fq.gz`
