@@ -14,7 +14,7 @@ Activate the environment
 conda activate variant-calling
 ```
 
-Perform a dry run using using snakemake
+Perform a dry run to confirm workflow is set to run from start to end without any errors 
 ```
 snakemake -np
 ```
