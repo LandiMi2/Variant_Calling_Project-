@@ -1,0 +1,198 @@
+SAMPLES, = glob_wildcards("Data/reads/{sample}_read1.fq.gz")
+
+rule all:
+    input:
+        expand("analyses/variants/{sample}_called_variants.vcf", sample=SAMPLES)
+
+rule fastqc_reports:
+    input:
+        "Data/reads/{sample}_read1.fq.gz",
+	"Data/reads/{sample}_read2.fq.gz"
+    output:
+        "analyses/fastqc/{sample}_read1_fastqc.html"
+    log:
+        "logs/fastqc/{sample}.log"
+    benchmark:
+        "benchmarks/fastqc/{sample}.txt"
+    shell:
+        "fastqc --outdir analyses/fastqc {input} 2> {log}"
+
+rule trimming_reads:
+    input:
+        r1 = "Data/reads/{sample}_read1.fq.gz",
+	r2 = "Data/reads/{sample}_read2.fq.gz",
+        html = "analyses/fastqc/{sample}_read1_fastqc.html"
+    output:
+        r1 = "analyses/trimmed/{sample}_read1.paired.fastq.gz",
+        r2 = "analyses/trimmed/{sample}_read2.paired.fastq.gz",
+        r1_unpaired = "analyses/trimmed/{sample}_read1.unpaired.fastq.gz",
+        r2_unpaired = "analyses/trimmed/{sample}_read2.unpaired.fastq.gz"
+    log:
+        "logs/trimming/{sample}.log"
+    benchmark:
+        "benchmarks/trimming/{sample}.txt"
+    shell:
+        "trimmomatic PE -phred33 {input.r1} {input.r2} {output.r1} {output.r1_unpaired} "
+        "{output.r2} {output.r2_unpaired} ILLUMINACLIP:TruSeq3.fa:2:30:10 "
+        "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 2> {log}"
+
+rule bwa_index_ref:
+    input:
+        fasta = "Data/reference/chr1_ref.fasta"
+    output:
+        touch("analyses/check/makeidx.done")
+    log:
+        "logs/bwa_index/ref_index.log"
+    benchmark:
+        "benchmarks/bwa_index/ref_index.txt"
+    shell:
+        "bwa index {input.fasta} 2> {log}"
+
+rule mapping_reads:
+    input:
+        r1 = "analyses/trimmed/{sample}_read1.paired.fastq.gz",
+        r2 = "analyses/trimmed/{sample}_read2.paired.fastq.gz",
+        idxdone = "analyses/check/makeidx.done"
+    output:
+        "analyses/aligned/{sample}.sam"
+    log:
+        "logs/mapping/{sample}.log"
+    benchmark:
+        "benchmarks/mapping/{sample}.txt"
+    threads: 8
+    params:
+        ref = "Data/reference/chr1_ref.fasta"
+    shell:
+        "bwa mem -t {threads} {params.ref} {input.r1} {input.r2} > {output} 2> {log}"
+
+rule samtools_sort:
+    input:
+        "analyses/aligned/{sample}.sam"
+    output:
+        "analyses/sorted/{sample}.bam"
+    log:
+        "logs/sorting/{sample}.log"
+    benchmark:
+        "benchmarks/sorting/{sample}.txt"
+    shell:
+        "samtools view -h -Sb {input} | samtools sort > {output} 2> {log}"
+
+rule remove_duplicates:
+    input:
+        "analyses/sorted/{sample}.bam"
+    output:
+        "analyses/dedup/{sample}.bam"
+    log:
+        "logs/deduplicating/{sample}.log"
+    benchmark:
+        "benchmarks/deduplicating/{sample}.txt"
+    shell:
+        "sambamba markdup -r {input} {output} 2> {log}"
+
+rule samtools_index_bam:
+    input:
+        "analyses/dedup/{sample}.bam"
+    output:
+        "analyses/dedup/{sample}.bam.bai"
+    log:
+        "logs/bam_index/{sample}.log"
+    benchmark:
+        "benchmarks/bam_index/{sample}.txt"
+    shell:
+        "samtools index {input} 2> {log}"
+
+rule samtools_faidx_ref:
+    input:
+        fasta = "Data/reference/chr1_ref.fasta",
+    output:
+        touch("analyses/check/faidx.done")
+    log:
+        "logs/faidx/ref_faidx.log"
+    benchmark:
+        "benchmarks/faidx/ref_faidx.txt"
+    shell:
+        "samtools faidx {input.fasta} 2> {log}"
+
+rule CreateSequenceDictionary:
+    input:
+        faidxdone = "analyses/check/faidx.done",
+        fasta = "Data/reference/chr1_ref.fasta"
+    output:
+        touch("analyses/check/ref_dict.done")
+    log:
+        "logs/dict/ref_dict.log"
+    benchmark:
+        "benchmarks/dict/ref_dict.txt"
+    shell:
+        "gatk CreateSequenceDictionary --REFERENCE {input.fasta} 2> {log}"
+
+rule IndexFeatureFile:
+    input:
+        dictdone = "analyses/check/ref_dict.done",
+        feature = "Data/knownsites/WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf"
+    output:
+        touch("analyses/check/idxfeature.done")
+    log:
+        "logs/sites/feature.log"
+    benchmark:
+        "benchmarks/sites/feature.txt"
+    shell:
+        "gatk IndexFeatureFile  --feature-file {input.feature} 2> {log}"
+
+rule AddOrReplaceReadGroups:
+    input:
+        bam = "analyses/dedup/{sample}.bam",
+        dedup = "analyses/dedup/{sample}.bam.bai"
+    output:
+        "analyses/readgroups/{sample}.bam"
+    log:
+        "logs/readgroups/{sample}.log"
+    benchmark:
+        "benchmarks/readgroups/{sample}.txt"
+    shell:
+        "gatk AddOrReplaceReadGroups --INPUT {input.bam}  --OUTPUT {output} "
+        "--RGID 4 --RGLB lib1 --RGPL illumina --RGPU unit1 --RGSM 20 2> {log}"
+
+rule BaseRecalibration:
+    input:
+        bam = "analyses/readgroups/{sample}.bam",
+        ref = "Data/reference/chr1_ref.fasta",
+        idxfeature = "analyses/check/idxfeature.done",
+        feature = "Data/knownsites/WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf"
+    output:
+        "analyses/recalibration/{sample}_data.table"
+    log:
+        "logs/recalibration/{sample}.log"
+    benchmark:
+        "benchmarks/recalibration/{sample}.txt"
+    shell:
+        "gatk BaseRecalibrator  --input {input.bam} --known-sites {input.feature} "
+        "--output {output} --reference {input.ref} 2> {log}"
+
+rule ApplyBQSR:
+    input:
+        recal = "analyses/recalibration/{sample}_data.table",
+        bam = "analyses/readgroups/{sample}.bam",
+        ref = "Data/reference/chr1_ref.fasta"
+    output:
+        "analyses/bqsr/{sample}.bam"
+    log:
+        "logs/applybqsr/{sample}.log"
+    benchmark:
+        "benchmarks/applybqsr/{sample}.txt"
+    shell:
+        "gatk ApplyBQSR -R {input.ref} -I {input.bam} --bqsr-recal-file {input.recal} "
+        "-O {output} 2> {log}"
+
+rule HaplotypeCaller:
+    input:
+        bam = "analyses/bqsr/{sample}.bam",
+        ref = "Data/reference/chr1_ref.fasta"
+    output:
+        "analyses/variants/{sample}_called_variants.vcf"
+    log:
+        "logs/haplotypeCaller/{sample}.log"
+    benchmark:
+        "benchmarks/haplotypeCaller/{sample}.txt"
+    shell:
+        "gatk HaplotypeCaller -I {input.bam} -O {output} -R {input.ref} 2> {log}"
