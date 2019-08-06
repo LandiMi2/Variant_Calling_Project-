@@ -1,15 +1,17 @@
 #! /bin/bash
 
+# Input variables
 bam=$1
 ref=$2
 out=$3
+dir=$4
 
 # Creating the gatk code
 code="gatk BaseRecalibrator  --input ${bam}"
 
-for site in ../Data/knownsites/*.vcf
+for vcf in ${dir}*.vcf
 do
-	code="${code} --known-sites ${site}"
+	code="${code} --known-sites ${vcf}"
 done
 
 code="${code} --output ${out} --reference ${ref}"
