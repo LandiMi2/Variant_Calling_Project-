@@ -128,8 +128,7 @@ rule CreateSequenceDictionary:
 
 rule IndexFeatureFile:
     input:
-        dictdone = "analyses/check/ref_dict.done",
-        feature = "Data/knownsites/WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf"
+        dir = "Data/knownsites/"
     output:
         touch("analyses/check/idxfeature.done")
     log:
@@ -137,7 +136,7 @@ rule IndexFeatureFile:
     benchmark:
         "benchmarks/sites/feature.txt"
     shell:
-        "gatk IndexFeatureFile  --feature-file {input.feature} 2> {log}"
+        "bash Scripts/indexfeature.sh {input.dir} 2> {log}"
 
 rule AddOrReplaceReadGroups:
     input:
@@ -158,6 +157,7 @@ rule BaseRecalibration:
         bam = "analyses/readgroups/{sample}.bam",
         ref = "Data/reference/chr1_ref.fasta",
         idxfeature = "analyses/check/idxfeature.done",
+        dictdone = "analyses/check/ref_dict.done",
         feature = "Data/knownsites/WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf"
     output:
         "analyses/recalibration/{sample}_data.table"
@@ -166,8 +166,7 @@ rule BaseRecalibration:
     benchmark:
         "benchmarks/recalibration/{sample}.txt"
     shell:
-        "gatk BaseRecalibrator  --input {input.bam} --known-sites {input.feature} "
-        "--output {output} --reference {input.ref} 2> {log}"
+        "bash Scripts/recalibration.sh {input.bam} {input.ref} {output} 2> {log}"
 
 rule ApplyBQSR:
     input:
