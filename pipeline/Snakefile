@@ -156,9 +156,9 @@ rule BaseRecalibration:
     input:
         bam = "analyses/readgroups/{sample}.bam",
         ref = "Data/reference/chr1_ref.fasta",
+        dir = "Data/knownsites/",
         idxfeature = "analyses/check/idxfeature.done",
-        dictdone = "analyses/check/ref_dict.done",
-        feature = "Data/knownsites/WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf"
+        dictdone = "analyses/check/ref_dict.done"
     output:
         "analyses/recalibration/{sample}_data.table"
     log:
@@ -166,7 +166,7 @@ rule BaseRecalibration:
     benchmark:
         "benchmarks/recalibration/{sample}.txt"
     shell:
-        "bash Scripts/recalibration.sh {input.bam} {input.ref} {output} 2> {log}"
+        "bash Scripts/recalibration.sh {input.bam} {input.ref} {output} {input.dir} 2> {log}"
 
 rule ApplyBQSR:
     input:
@@ -189,9 +189,19 @@ rule HaplotypeCaller:
         ref = "Data/reference/chr1_ref.fasta"
     output:
         "analyses/variants/{sample}_called_variants.vcf"
+    params:
+        "-A ReadPosRankSumTest",
+        "-A FisherStrand",
+        "-A StrandOddsRatio",
+        "-A MappingQualityRankSumTest",
+        "-A QualByDepth",
+        "-A InbreedingCoeff",
+        "-A RMSMappingQuality",
+        "--genotyping-mode DISCOVERY",
+        "-stand-call-conf 10"
     log:
         "logs/haplotypeCaller/{sample}.log"
     benchmark:
         "benchmarks/haplotypeCaller/{sample}.txt"
     shell:
-        "gatk HaplotypeCaller -I {input.bam} -O {output} -R {input.ref} 2> {log}"
+        "gatk HaplotypeCaller -R {input.ref} -I {input.bam} {params} -O {output} 2> {log}"
