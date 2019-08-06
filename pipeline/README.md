@@ -6,7 +6,7 @@ This is a step wise guideline to reproducing a variant calling pipeline using `s
 
 To reproduce the analysis with the packages used recreate the variant calling environment on your machine with all packages used
 ```
-conda create -n variant-calling -f envs/variant-calling.yaml
+conda env create -n variant-calling -f envs/variant-calling.yaml
 ```
     
 Activate the environment
