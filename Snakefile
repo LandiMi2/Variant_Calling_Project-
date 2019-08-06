@@ -14,10 +14,10 @@ rule fastaqc:
          "Data/{samples}_read1.fq.gz", 
          "Data/{samples}_read2.fq.gz"
     output: 
-        "Data/{samples}_read1.fastqc.zip",
-        "Data/{samples}_read2.fastqc.zip",
-        "Data/{samples}_read1.html",
-        "Data/{samples}_read2.html"
+        "Data/{samples}_read1_fastqc.zip",
+        "Data/{samples}_read2_fastqc.zip",
+        "Data/{samples}_read1_fastqc.html",
+        "Data/{samples}_read2_fastqc.html"
     log:
         "Results/logs/{samples}.fastqc"
     conda:
@@ -30,7 +30,9 @@ rule trimming:
         input: 
             read_1 = "Data/{samples}_read1.fq.gz", 
             read_2 = "Data/{samples}_read2.fq.gz",
-            html = "Data/{samples}_read1.html"
+            html = "Data/{samples}_read1_fastqc.html",
+	    fastqc = "Data/{samples}_read1_fastqc.zip"
+  
         output:
             read1_paired = "Data/{samples}_read1_output_paired.fq.gz",
             read2_paired = "Data/{samples}_read2_output_paired.fq.gz",
