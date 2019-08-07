@@ -2,7 +2,7 @@ SAMPLES, = glob_wildcards("Data/reads/{sample}_read1.fq.gz")
 
 rule all:
     input:
-        expand("analyses/variants/{sample}_called_variants.vcf", sample=SAMPLES)
+        expand("analyses/final_recal_variants/{sample}_recalibrated_snp_indel.vcf", sample=SAMPLES)
 
 rule fastqc_reports:
     input:
@@ -150,7 +150,8 @@ rule AddOrReplaceReadGroups:
         "benchmarks/readgroups/{sample}.txt"
     shell:
         "gatk AddOrReplaceReadGroups --INPUT {input.bam}  --OUTPUT {output} "
-        "--RGID 4 --RGLB lib1 --RGPL illumina --RGPU unit1 --RGSM 20 2> {log}"
+        "-LB 00001 -PL illumina -PU 001 -SM out 2> {log}" 
+#        "--RGID 4 --RGLB lib1 --RGPL illumina --RGPU unit1 --RGSM 20 2> {log}"
 
 rule BaseRecalibration:
     input:
@@ -205,3 +206,97 @@ rule HaplotypeCaller:
         "benchmarks/haplotypeCaller/{sample}.txt"
     shell:
         "gatk HaplotypeCaller -R {input.ref} -I {input.bam} {params} -O {output} 2> {log}"
+
+rule IndexResources:
+    input:
+        dir = "Data/b37/"
+    output:
+        touch("analyses/check/idxresource.done")
+    log:
+        "logs/resourceidx/feature.log"
+    benchmark:
+        "benchmarks/resourceidx/feature.txt"
+    shell:
+        "bash Scripts/indexfeature.sh {input.dir} 2> {log}"
+
+rule VariantRecalibrator_SNP:
+    input:
+        ref = "Data/reference/chr1_ref.fasta",
+        vcf = "analyses/variants/{sample}_called_variants.vcf",
+        residxdone = "analyses/check/idxresource.done"
+    output:
+        "analyses/recal_files/snp/{sample}_called_variants.recal",
+        "analyses/recal_files/snp/tranches/{sample}_called_variants_recal.tranches",
+        "analyses/recal_files/snp/plots/{sample}_called_variants_recal.plot.R"
+    params:
+        "-resource:hapmap,known=false,training=true,truth=true,prior=15.0 Data/b37/hapmap_3.3.b37.vcf",
+        "-resource:omni,known=false,training=true,truth=false,prior=12.0 Data/b37/1000G_omni2.5.b37.vcf",
+        "-resource:dbsnp,known=true,training=false,truth=false,prior=2.0 Data/b37/dbsnp_138.b37.vcf",
+        "-an QD -an FS -an SOR -an MQRankSum -an ReadPosRankSum -an MQ",
+        "-mode SNP --max-gaussians 4"
+    log:
+        "logs/VariantRecalibrator/snp/{sample}.log"
+    benchmark:
+        "benchmarks/VariantRecalibrator/snp/{sample}.txt"
+    shell:
+        "gatk VariantRecalibrator -R {input.ref} -V {input.vcf} -O {output[0]} "
+        "{params} --tranches-file {output[1]} --rscript-file {output[2]} 2> {log}"
+
+rule ApplyVQSR_SNP:
+    input:
+        ref = "Data/reference/chr1_ref.fasta",
+        vcf = "analyses/variants/{sample}_called_variants.vcf",
+        recal = "analyses/recal_files/snp/{sample}_called_variants.recal"
+    output:
+        "analyses/recal_variants/{sample}_recalibrated_snp.vcf"
+    params:
+        "--ts-filter-level 99.5",
+        "--tranches-file analyses/recal_files/snp/tranches/{sample}_called_variants_recal.tranches",
+        "-mode SNP"
+    log:
+        "logs/applyVQSR/snp/{sample}.log"
+    benchmark:
+        "benchmarks/applyVQSR/snp/{sample}.txt"
+    shell:
+        "gatk ApplyVQSR -R {input.ref} -V {input.vcf} -O {output} "
+        "{params} --recal-file {input.recal} 2> {log}"
+
+rule VariantRecalibrator_Indel:
+    input:
+        ref = "Data/reference/chr1_ref.fasta",
+        vcf = "analyses/recal_variants/{sample}_recalibrated_snp.vcf",
+    output:
+        "analyses/recal_files/indel/{sample}_called_variants.recal",
+        "analyses/recal_files/indel/tranches/{sample}_called_variants_recal.tranches",
+        "analyses/recal_files/indel/plots/{sample}_called_variants_recal.plot.R"
+    params:
+        "-resource:mills,known=false,training=true,truth=true,prior=12.0 Data/b37/Mills_and_1000G_gold_standard.indels.b37.vcf",
+        "-resource:dbsnp,known=true,training=false,truth=false,prior=2.0 Data/b37/dbsnp_138.b37.vcf",
+        "-an QD -an FS -an SOR -an MQRankSum -an ReadPosRankSum",
+        "-mode INDEL --max-gaussians 4"
+    log:
+        "logs/VariantRecalibrator/indel/{sample}.log"
+    benchmark:
+        "benchmarks/VariantRecalibrator/indel/{sample}.txt"
+    shell:
+        "gatk VariantRecalibrator -R {input.ref} -V {input.vcf} -O {output[0]} "
+        "{params} --tranches-file {output[1]} --rscript-file {output[2]} 2> {log}"
+
+rule ApplyVQSR_indel:
+    input:
+        ref = "Data/reference/chr1_ref.fasta",
+        vcf = "analyses/recal_variants/{sample}_recalibrated_snp.vcf",
+        recal = "analyses/recal_files/indel/{sample}_called_variants.recal"
+    output:
+        "analyses/final_recal_variants/{sample}_recalibrated_snp_indel.vcf"
+    params:
+        "--ts-filter-level 99.0",
+        "--tranches-file analyses/recal_files/indel/tranches/{sample}_called_variants_recal.tranches",
+        "-mode INDEL"
+    log:
+        "logs/applyVQSR/indel/{sample}.log"
+    benchmark:
+        "benchmarks/applyVQSR/indel/{sample}.txt"
+    shell:
+        "gatk ApplyVQSR -R {input.ref} -V {input.vcf} -O {output} "
+        "{params} --recal-file {input.recal} 2> {log}"
