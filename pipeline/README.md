@@ -45,3 +45,5 @@ This folder contains three sub-folders:
      * `Mills_and_1000G_gold_standard.indels.b37.vcf`
 
 Other folders are generated during the analysis.
+
+**NB:** The data used in this pipeline development was borrowed from [H3ABioNet](https://h3abionet.github.io/H3ABionet-SOPs/Variant-Calling-5-0.html) and b37 bundle was accessed from [gatk](https://github.com/snewhouse/ngs_nextflow/wiki/GATK-Bundle).
