@@ -36,5 +36,14 @@ This folder contains three sub-folders:
      * `chr1_ref.fasta`
 3. **knownsites** - contains vcf files for known variants.
      * `WES_chr1_50X_E0.005_merged_golden.NoChrInNames.vcf`
+     * `1.1KGIndels.chr1.vcf`
+     * `1.MillsIndels.chr1.vcf`
+4. **b37** - the b37 gatk bundle.
+     * `1000G_omni2.5.b37.vcf`
+     * `dbsnp_138.b37.vcf`
+     * `hapmap_3.3.b37.vcf`
+     * `Mills_and_1000G_gold_standard.indels.b37.vcf`
 
 Other folders are generated during the analysis.
+
+**NB:** The data used in this pipeline development was borrowed from [H3ABioNet](https://h3abionet.github.io/H3ABionet-SOPs/Variant-Calling-5-0.html) and b37 bundle was accessed from [gatk](https://github.com/snewhouse/ngs_nextflow/wiki/GATK-Bundle).
