@@ -151,7 +151,6 @@ rule AddOrReplaceReadGroups:
     shell:
         "gatk AddOrReplaceReadGroups --INPUT {input.bam}  --OUTPUT {output} "
         "-LB 00001 -PL illumina -PU 001 -SM out 2> {log}" 
-#        "--RGID 4 --RGLB lib1 --RGPL illumina --RGPU unit1 --RGSM 20 2> {log}"
 
 rule BaseRecalibration:
     input:
