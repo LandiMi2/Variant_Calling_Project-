@@ -1,4 +1,9 @@
 SAMPLES, = glob_wildcards("Data/reads/{sample}_read1.fq.gz")
+ref_seq = "Data/reference/chr1_ref.fasta"
+known_sites = "Data/knownsites/"
+resource_bundle = "Data/b37/"
+read1 = "Data/reads/{sample}_read1.fq.gz"
+read2 = "Data/reads/{sample}_read2.fq.gz"
 
 rule all:
     input:
@@ -6,8 +11,8 @@ rule all:
 
 rule fastqc_reports:
     input:
-        "Data/reads/{sample}_read1.fq.gz",
-	"Data/reads/{sample}_read2.fq.gz"
+        read1,
+	read2
     output:
         "analyses/fastqc/{sample}_read1_fastqc.html"
     log:
@@ -19,8 +24,8 @@ rule fastqc_reports:
 
 rule trimming_reads:
     input:
-        r1 = "Data/reads/{sample}_read1.fq.gz",
-	r2 = "Data/reads/{sample}_read2.fq.gz",
+        r1 = read1,
+	r2 = read2,
         html = "analyses/fastqc/{sample}_read1_fastqc.html"
     output:
         r1 = "analyses/trimmed/{sample}_read1.paired.fastq.gz",
@@ -38,7 +43,7 @@ rule trimming_reads:
 
 rule bwa_index_ref:
     input:
-        fasta = "Data/reference/chr1_ref.fasta"
+        ref_fasta = ref_seq
     output:
         touch("analyses/check/makeidx.done")
     log:
@@ -46,7 +51,7 @@ rule bwa_index_ref:
     benchmark:
         "benchmarks/bwa_index/ref_index.txt"
     shell:
-        "bwa index {input.fasta} 2> {log}"
+        "bwa index {input.ref_fasta} 2> {log}"
 
 rule mapping_reads:
     input:
@@ -61,7 +66,7 @@ rule mapping_reads:
         "benchmarks/mapping/{sample}.txt"
     threads: 8
     params:
-        ref = "Data/reference/chr1_ref.fasta"
+        ref = ref_seq
     shell:
         "bwa mem -t {threads} {params.ref} {input.r1} {input.r2} > {output} 2> {log}"
 
@@ -103,7 +108,7 @@ rule samtools_index_bam:
 
 rule samtools_faidx_ref:
     input:
-        fasta = "Data/reference/chr1_ref.fasta",
+        ref_fasta = ref_seq
     output:
         touch("analyses/check/faidx.done")
     log:
@@ -111,12 +116,12 @@ rule samtools_faidx_ref:
     benchmark:
         "benchmarks/faidx/ref_faidx.txt"
     shell:
-        "samtools faidx {input.fasta} 2> {log}"
+        "samtools faidx {input} 2> {log}"
 
 rule CreateSequenceDictionary:
     input:
         faidxdone = "analyses/check/faidx.done",
-        fasta = "Data/reference/chr1_ref.fasta"
+        ref_fasta = ref_seq
     output:
         touch("analyses/check/ref_dict.done")
     log:
@@ -124,11 +129,11 @@ rule CreateSequenceDictionary:
     benchmark:
         "benchmarks/dict/ref_dict.txt"
     shell:
-        "gatk CreateSequenceDictionary --REFERENCE {input.fasta} 2> {log}"
+        "gatk CreateSequenceDictionary --REFERENCE {input.ref_fasta} 2> {log}"
 
 rule IndexFeatureFile:
     input:
-        dir = "Data/knownsites/"
+        dir = known_sites
     output:
         touch("analyses/check/idxfeature.done")
     log:
@@ -155,8 +160,8 @@ rule AddOrReplaceReadGroups:
 rule BaseRecalibration:
     input:
         bam = "analyses/readgroups/{sample}.bam",
-        ref = "Data/reference/chr1_ref.fasta",
-        dir = "Data/knownsites/",
+        ref = ref_seq,
+        dir = known_sites,
         idxfeature = "analyses/check/idxfeature.done",
         dictdone = "analyses/check/ref_dict.done"
     output:
@@ -172,7 +177,7 @@ rule ApplyBQSR:
     input:
         recal = "analyses/recalibration/{sample}_data.table",
         bam = "analyses/readgroups/{sample}.bam",
-        ref = "Data/reference/chr1_ref.fasta"
+        ref = ref_seq
     output:
         "analyses/bqsr/{sample}.bam"
     log:
@@ -186,7 +191,7 @@ rule ApplyBQSR:
 rule HaplotypeCaller:
     input:
         bam = "analyses/bqsr/{sample}.bam",
-        ref = "Data/reference/chr1_ref.fasta"
+        ref = ref_seq
     output:
         "analyses/variants/{sample}_called_variants.vcf"
     params:
@@ -208,7 +213,7 @@ rule HaplotypeCaller:
 
 rule IndexResources:
     input:
-        dir = "Data/b37/"
+        dir = resource_bundle
     output:
         touch("analyses/check/idxresource.done")
     log:
@@ -220,7 +225,7 @@ rule IndexResources:
 
 rule VariantRecalibrator_SNP:
     input:
-        ref = "Data/reference/chr1_ref.fasta",
+        ref = ref_seq,
         vcf = "analyses/variants/{sample}_called_variants.vcf",
         residxdone = "analyses/check/idxresource.done"
     output:
@@ -243,7 +248,7 @@ rule VariantRecalibrator_SNP:
 
 rule ApplyVQSR_SNP:
     input:
-        ref = "Data/reference/chr1_ref.fasta",
+        ref = ref_seq,
         vcf = "analyses/variants/{sample}_called_variants.vcf",
         recal = "analyses/recal_files/snp/{sample}_called_variants.recal"
     output:
@@ -262,7 +267,7 @@ rule ApplyVQSR_SNP:
 
 rule VariantRecalibrator_Indel:
     input:
-        ref = "Data/reference/chr1_ref.fasta",
+        ref = ref_seq,
         vcf = "analyses/recal_variants/{sample}_recalibrated_snp.vcf",
     output:
         "analyses/recal_files/indel/{sample}_called_variants.recal",
@@ -283,7 +288,7 @@ rule VariantRecalibrator_Indel:
 
 rule ApplyVQSR_indel:
     input:
-        ref = "Data/reference/chr1_ref.fasta",
+        ref = ref_seq,
         vcf = "analyses/recal_variants/{sample}_recalibrated_snp.vcf",
         recal = "analyses/recal_files/indel/{sample}_called_variants.recal"
     output:
