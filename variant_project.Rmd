@@ -48,7 +48,7 @@ conda_list()[[1]][1] %>%
 # use of intern = true is used to display knitr output in either pdf or html
 system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -np") 
 
-#Running the command after confrimming with the dry run command
+#Running the command after confriming with the dry run command
 
 system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake") 
 ```
@@ -100,7 +100,7 @@ system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -n --until tri
 ```
 
 ```{r}
-#Also one has the option to run any number of rules they require
+# useful command to run  snakemake
 
 ###library installation
 library(reticulate)
