@@ -1,0 +1,118 @@
+---
+title: "snakemake project for variant calling"
+author: "python group"
+date: "September 5, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# variant calling workflow using snakemake language
+
+variant calling is the identification of nucleotide difference on a given reference genome or a transcriptome.Variant calling has become widely accepted in human genetics as a way of identifying variants associated with  a specific trait, population or hereditary diesases. Using the standard pipeline available for identification of variant calling from H3ABionet community.We planned to make a more portable and reproducible workflow, for ease of analysis on any given platform. snakemake language offers this opportunity, due to its ability to work across different platform and it use of the python syntax, which is a pipelne language.
+
+The pipeline was designed based on the standard operating procedures (SOPs) from H3Africa website
+The pipeline was divided into three phases : phase one: preprocesing of reads (fastqc analysis(fastqc), adapter removal and contaminate removale(trimmomatics)), Phasetwo:Intial variant discovery(alignment to reference genome (bwa and samtools), deduplication(sambamba), basequality score recalibaration (BSQR protocol from GATk)), Phase three: variant annotation and prioritization(SNP and INDEL variant prioritization(VSQR protocol from GATK)))
+
+#METHODOLOGY#
+#To create the snakemake workflow:#
+Install either [anaconda](https://docs.anaconda.com/anaconda/install/)/[bioconda](https://github.com/MonashBioinformaticsPlatform/bioconda-tutorial/blob/master/Bioconda_Installation.ipynb) platform 
+
+First set the environment for analysis: in our repo we already have given the instructions to follow: [seting_up_the_environment](https://github.com/LandiMi2/Variant_Calling_Project-/blob/master/pipeline/README.md)
+
+After setting the enviroment one can access the snakemake code from :
+from the [repo](https://github.com/LandiMi2/Variant_Calling_Project-/tree/master/pipeline)
+
+```{r,eval=TRUE, echo=TRUE}
+# install packages(runnning conda command on r studio)
+#install.packages("reticulate")
+#install.packages("tidyverse")
+# library installation
+library(reticulate)
+library(tidyverse)
+# include python on the r script command
+knitr::knit_engines$set(python = reticulate::eng_python)
+
+# set the environmnt to the directory with the snakmake file
+## Set working directory.
+setwd("/home/icipe/Variant_Calling_Project-/pipeline/")
+
+#it is include the environments
+conda_list()[[1]][1] %>% 
+  use_condaenv(required = TRUE)
+
+# dry run of the snakemake command 
+# use of intern = true is used to display knitr output in either pdf or html
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -np") 
+
+#Running the command after confrimming with the dry run command
+
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake") 
+```
+
+```{r, eval=FALSE}
+# library installation
+library(reticulate)
+library(tidyverse)
+# displays the workflow directly
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake --dag |dot |display " )
+
+```
+
+
+```{r, eval=TRUE, echo=FALSE}
+# library
+library(knitr)
+
+# generated the work flow on terminal using 
+# snakemake --forceall --dag | dot -Tpng > dag.png
+# the dirctory and path is found in my computer for the image
+#command visualises th snakemake on the pdf generated 
+
+include_graphics("/home/icipe/Variant_Calling_Project-/pipeline/dag.png" 
+                 ,auto_pdf= getOption("knitr.graphics.auto_pdf", TRUE), 
+    dpi = NULL)
+
+```
+
+Snakemake is a diverse language, that can be used for manipulation of data, in  this example: we would like to diplay only phase one of the variant calling analysis. 
+
+Employing rmarkdown and commands from snakemake we demonstrate the  versatity of the workflow language
+
+```{r}
+#Also one has the option to run any number of rules they require
+# library installation
+library(reticulate)
+library(tidyverse)
+# command from snakemake (diplays the output of phase one script: preprocesing of reads 
+#(fastqc analysis(fastqc), adapter removal and contaminate removal(trimmomatics))) 
+
+# to run a dry run of the snakemake command 
+
+# removing intern = true displays the results in the console
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -n --until trimming_reads") 
+
+# use of intern = true is used to display knitr output in either pdf or html
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -n --until trimming_reads", intern = TRUE) 
+```
+
+```{r}
+#Also one has the option to run any number of rules they require
+
+###library installation
+library(reticulate)
+library(tidyverse)
+
+# to run a dry run of the snakemake command 
+
+# this useful for the application of snakemake command 
+system("/home/icipe/miniconda3/envs/variant_calling/bin/snakemake -n --help") 
+
+```
+ 
+                
+    
+The snakemake pipeline was evaluated with data used for acreditation in H3Africa consortium. The data was evaluated to have reported 27921 SNPs and 1589 INDELs demonstrating the functionality of our work flow. Although the snakemake workflow was able to generate the SNPs vcf files. Additional study is required for other types of variant studies.
