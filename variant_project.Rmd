@@ -80,7 +80,7 @@ include_graphics("/home/icipe/Variant_Calling_Project-/pipeline/dag.png"
 
 Snakemake is a diverse language, that can be used for manipulation of data, in  this example: we would like to diplay only phase one of the variant calling analysis. 
 
-Employing rmarkdown and commands from snakemake we demonstrate the  versatity of the workflow language
+Employing rmarkdown and commands from snakemake we demonstrate the versatility of the workflow language
 
 ```{r}
 #Also one has the option to run any number of rules they require
