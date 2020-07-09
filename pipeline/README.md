@@ -13,6 +13,13 @@ Activate the environment
 ```
 conda activate variant-calling
 ```
+Create the data folder and download the data
+
+````
+mkdir -p Data && cd Data
+wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" http://hpc01.icipe.org/ibt2020/Data/
+`````
+
 
 Perform a dry run to confirm workflow is set to run from start to end without any errors 
 ```
