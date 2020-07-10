@@ -13,7 +13,7 @@ Activate the environment
 ```
 conda activate variant-calling
 ```
-Create the data folder and download the data
+Create the data folder and download the data from [here](http://hpc01.icipe.org/ibt2020/Data/)
 
 ````
 mkdir -p Data && cd Data
