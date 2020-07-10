@@ -21,4 +21,16 @@ Figure 1: **Flowchart of the Human Variant Calling Pipeline**. The format of the
 2. Perform downstream analysis after variant calling
 3. Convert the pipeline into Nextflow or Snakemake
 
+## To run the pipeline
+
+Kindly follow through the [README.md](https://github.com/LandiMi2/Variant_Calling_Project-/tree/master/pipeline/README.md) in the [`pipeline`](https://github.com/LandiMi2/Variant_Calling_Project-/tree/master/pipeline) dir.
+
+
+## Contributors
+
+- Michael Landi
+- Festus Nyasimi
+- Careen Naitore
+- Charles Kamonde
+
 Through the project, you need to demonstrate collaborative research skills, informative visualization, and report writing. 
