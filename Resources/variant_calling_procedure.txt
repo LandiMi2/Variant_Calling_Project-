@@ -12,12 +12,12 @@ $multqc. <enter> #this will create a multiqc.html file for you to check quality 
 
 if your reads look good and you happy to proceed I am happy to carry on...
 
-Now you have you good quality reads but again you might want to check if you have have short reads and unpaired reads that my not align where you want 
+Now you have your good quality reads but again you might want to check if you have have short reads and unpaired reads that my not align where you want 
 especially when you doing your alignment. Use Trimmomatic for this annalysis 
 
 $trimmomatic PE -phred33 WES_chr1_50X_E0.005_merged_read1.fq.gz WES_chr1_50X_E0.005_merged_read2.fq.gz WES_chr1_read1_output_paired.fq.gz WES_chr1_read1_output_unpaired.fq.gz WES_chr1_read2_output_paired.fq.gz WES_chr1_read2_output_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36
 
-Next you want to do an alignment of the reads to the reference genome (for this expt I used the whole genome of Homo sapeins species) 
+Next you want to do an alignment of the reads to the reference genome (for this expt we used the whole genome of Homo sapeins species) 
 
 $wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Homo_sapiens_assembly38.fasta #download your reference file 
 
