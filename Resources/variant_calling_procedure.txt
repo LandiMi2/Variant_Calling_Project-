@@ -1,6 +1,6 @@
 Variant Calling Step by step 
 
-Before any analysis you need to have data already prepared form your analysis. For this work you are have read 1 and read 2(for this expt 
+Before any analysis you need to have data already prepared for your analysis. For this work you have read 1 and read 2(for this expt 
 they did a paired end illumina sequencing) of WES datasets for chromosome one 
 of Homo sapiens species 
 
