@@ -1,27 +1,25 @@
-Variant Calling Step by step 
+Variant Calling Step by Step 
 
-Before any analysis you need to have data already prepared for your analysis. For this work you have read 1 and read 2(for this expt 
-they did a paired end illumina sequencing) of WES datasets for chromosome one 
+Before any analysis, you need to have data already prepared for your study. For this work, you have read 1 and read 2 of WES datasets for chromosome one 
 of Homo sapiens species 
 
 Phase 1 Analysis 
-- Check quality of reads using fastqc 
+- Check the quality of reads using fastqc 
 $fastqc read1fq.gz read2.fq.gz 
-- do a multqc in the folder that has results from fastqc 
-$multqc. <enter> #this will create a multiqc.html file for you to check quality of your reads 
+- do a multqc in the folder that has resulted from fastqc 
+$multqc. <enter> #this will create a multiqc.html file for you to check the quality of your reads 
 
-if your reads look good and you happy to proceed I am happy to carry on...
+If your reads look good and you happy to proceed, I am delighted to carry on...
 
-Now you have your good quality reads but again you might want to check if you have have short reads and unpaired reads that my not align where you want 
-especially when you doing your alignment. Use Trimmomatic for this annalysis 
+Now you have your good quality reads, but again you might want to check if you have short reads and unpaired reads that may not align where you want, especially when you doing your alignment. Use Trimmomatic for this analysis 
 
 $trimmomatic PE -phred33 WES_chr1_50X_E0.005_merged_read1.fq.gz WES_chr1_50X_E0.005_merged_read2.fq.gz WES_chr1_read1_output_paired.fq.gz WES_chr1_read1_output_unpaired.fq.gz WES_chr1_read2_output_paired.fq.gz WES_chr1_read2_output_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36
 
-Next you want to do an alignment of the reads to the reference genome (for this expt we used the whole genome of Homo sapeins species) 
+Next, you want to do an alignment of the reads to the reference genome (for this expt we used the whole genome of Homo sapiens species) 
 
 $wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Homo_sapiens_assembly38.fasta #download your reference file 
 
-$bwa index -a bwtsw Homo_sapiens_assembly38.fasta #added bwtsw because you are using a whole genome reference sequence 
+$bwa index -a bwtsw Homo_sapiens_assembly38.fasta #added bwtsw because you are using a whole-genome reference sequence 
 $ bwa mem –t 2 reference read_1 read_2 > BWA.sam #do your read alignment, value 2 is optional depending on how many cores you have 
 
 Now you have a sam file, generate a binary file (bam) 
@@ -38,13 +36,13 @@ $samtools index Homo_sapiens_BWA_Clean.bam #index your cleaned bam file
 
 
 Phase 2 
-Now you have your clean bam file without  duplications the preceeinding steps you will use gatk toolkit (for this expt gatk4 is used for analysis).
+Now you have your clean bam file without duplications the proceeding steps you will use gatk toolkit (for this expt gatk4 is used for analysis).
 First is to come up with a recalibration report and to do this you need to prepare your input files 
 For your reference :
 $samtools faidx Homo_sapiens_assembly38.fasta #this will help you create a fasta.fai 
 $gatk CreateSequenceDictionary -R Homo_sapiens_assembly38.fasta -O Homo_sapiens_assembly38.dict #you want to create a reference dictionary
 
-Note that for this step you need to download three known sites vcf files and prepare them in finding indexfuturefiles for this file 
+Note that for this Step you need to download three known sites vcf files and prepare them in finding indexfuturefiles for this file. 
 
 $wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/beta/Homo_sapiens_assembly38.dbsnp138.vcf.gz
 $wget ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
@@ -55,14 +53,14 @@ $gatk IndexFeatureFile -F Homo_sapiens_assembly38.dbsnp138.vcf
 $gatk IndexFeatureFile -F Mills_and_1000G_gold_standard.indels.hg38.vcf
 $gatk IndexFeatureFile -F Homo_sapiens_assembly38.known_indels.vcf
 
-also you clean bam file migth have some issues with its read groups , sorting this 
+also you clean bam file might have some issues with its read groups, sorting this 
 $gatk AddOrReplaceReadGroups -I Homo_sapiens_BWA_Clean.bam -O Homo_sapiens_BWA_readgroups.bam -ID 4 -LB lib1 -PL illumina -PU unit1 -SM 20
 
 Now you ready to do you recalibration!!!
 
 $gatk BaseRecalibrator -R Homo_sapiens_assembly38.fasta -I Homo_sapiens_BWA_readgroups.bam -O Homo_sapiens_Recalibrator_report.grp --known-sites Homo_sapiens_assembly38.dbsnp138.vcf --known-sites Mills_and_1000G_gold_standard.indels.hg38.vcf --known-sites Homo_sapiens_assembly38.known_indels.vcf
 
-Don't be too much excited coz you did the step hehe ....you now have a recalibration report, you need to use that to create a recalibrated bam file 
+Don't be too much-excited because you did the Step; you now have a recalibration report, you need to use that to create a recalibrated bam file 
 $gatk ApplyBQSR -bqsr Homo_sapiens_Recalibrator_report.grp -I Homo_sapiens_BWA_readgroups.bam -O Home_sapiens_recalibrated.bam
 
 
@@ -70,9 +68,11 @@ Awesome!!! you almost there buddy
 The last shot is to create your variant file
 $gatk HaplotypeCaller -I Home_sapiens_recalibrated.bam -O Homo_sapiens_variant.vcf -R Homo_sapiens_assembly38.fasta
 
-Boom !!! you have your vcf file now ...you might want to view you file in VEP database and view your results 
+Boom !!! you have your vcf file now, you might want to view your file in VEP database and view your results and filter out specific preferred variants. 
 
-Note that this analysis we majored on required options , you might want to add other optional arguments rather parameters for your analysis.
+Note that this analysis we majored on required options, you might want to add other optional arguments rather parameters for your study.
+
+
 Happy Finding Variants!!! TADA!!!
 
 
